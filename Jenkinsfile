@@ -1,10 +1,10 @@
 pipeline {
-    agent  any  // Jenkins agent with Docker installed
+    agent any  // Jenkins agent with Docker installed
 
     environment {
         DOCKER_REGISTRY = "docker.io"
-        DOCKER_REPO     = "amitkumar952/devops-interview-python"  // <-- change this
-        DOCKER_CRED_ID  = "amitkumar952-dockerhub"                      // <-- Jenkins credential ID
+        DOCKER_REPO     = "amitkumar952/devops-interview-python"
+        DOCKER_CRED_ID  = "amitkumar952-dockerhub"
         IMAGE_TAG       = "${env.GIT_COMMIT?.take(7) ?: env.BUILD_ID}"
     }
 
@@ -32,9 +32,6 @@ pipeline {
             }
         }
 
-        /* ------------------------------------------------
-           1. BUILD THE APP (Docker build)
-        -------------------------------------------------- */
         stage('Docker Build') {
             when { branch 'main' }
             steps {
@@ -48,19 +45,13 @@ pipeline {
             }
         }
 
-        /* ------------------------------------------------
-           2. RUN TESTS (Start container + curl endpoints)
-        -------------------------------------------------- */
         stage('Endpoint Tests') {
             when { branch 'main' }
             steps {
                 echo "Running endpoint tests..."
 
                 sh '''
-                  # Start container
                   docker run -d --name test-app -p 5000:5000 ${DOCKER_REGISTRY}/${DOCKER_REPO}:${IMAGE_TAG}
-
-                  # Wait for the app to come up
                   sleep 3
 
                   echo "Testing endpoints..."
@@ -80,9 +71,6 @@ pipeline {
             }
         }
 
-        /* ------------------------------------------------
-           3. PUSH TO DOCKER HUB
-        -------------------------------------------------- */
         stage('Docker Login & Push') {
             when { branch 'main' }
             steps {
@@ -103,14 +91,69 @@ pipeline {
             }
         }
 
-    } // stages
+        /* ------------------------------------------------
+           4. DEPLOY TO KUBERNETES
+        -------------------------------------------------- */
+        stage('Deploy to Kubernetes') {
+            when { branch 'main' }
+            steps {
+                echo "Deploying to Kubernetes..."
+
+                withCredentials([
+                    file(credentialsId: 'KUBECONFIG_CRED', variable: 'KUBECONFIG_FILE'),
+                    string(credentialsId: 'APP_API_KEY', variable: 'REAL_API_KEY')
+                ]) {
+                    sh '''
+                      export KUBECONFIG=${KUBECONFIG_FILE}
+
+                      echo "Applying ConfigMap, Service, HPA, PDB..."
+                      kubectl apply -f k8s/configmap.yaml
+                      kubectl apply -f k8s/service.yaml
+                      kubectl apply -f k8s/hpa.yaml
+                      kubectl apply -f k8s/pdb.yaml || true
+
+                      echo "Creating/Updating Kubernetes Secret from Jenkins credential..."
+                      kubectl create secret generic devops-python-secret \
+                        --from-literal=api_key="${REAL_API_KEY}" \
+                        --dry-run=client -o yaml | kubectl apply -f -
+
+                      echo "Updating Deployment image for rolling update..."
+                      kubectl -n default set image deployment/devops-python \
+                        devops-python=${DOCKER_REGISTRY}/${DOCKER_REPO}:${IMAGE_TAG} --record
+
+                      echo "Waiting for Rolling Update to Complete..."
+                      kubectl -n default rollout status deployment/devops-python --timeout=120s
+                    '''
+                }
+            }
+
+            post {
+                failure {
+                    echo "Deployment failed — attempting rollback..."
+                    script {
+                        withCredentials([file(credentialsId: 'KUBECONFIG_CRED', variable: 'KUBECONFIG_FILE')]) {
+                            sh '''
+                              export KUBECONFIG=${KUBECONFIG_FILE}
+                              kubectl -n default rollout undo deployment/devops-python
+                              kubectl -n default rollout status deployment/devops-python --timeout=60s || true
+                            '''
+                        }
+                    }
+                }
+                success {
+                    echo "✔ Deployment succeeded."
+                }
+            }
+        }
+
+    }
 
     post {
         success {
-            echo "✔ CI pipeline completed. Image pushed successfully."
+            echo "✔ CI/CD pipeline completed successfully."
         }
         failure {
-            echo "✖ CI pipeline failed."
+            echo "✖ CI/CD pipeline failed."
         }
         always {
             echo "Pipeline finished."
