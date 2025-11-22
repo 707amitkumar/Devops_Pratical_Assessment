@@ -40,7 +40,7 @@ pipeline {
             steps {
                 echo "Building Docker image..."
                 sh '''
-                  sudo docker build \
+                  docker build \
                     -t ${DOCKER_REGISTRY}/${DOCKER_REPO}:${IMAGE_TAG} \
                     -t ${DOCKER_REGISTRY}/${DOCKER_REPO}:latest \
                     .
@@ -73,8 +73,8 @@ pipeline {
             post {
                 always {
                     sh '''
-                      sudo docker stop test-app || true
-                      sudo docker rm test-app || true
+                      docker stop test-app || true
+                      docker rm test-app || true
                     '''
                 }
             }
@@ -96,8 +96,8 @@ pipeline {
                     sh '''
                       echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_USER" --password-stdin ${DOCKER_REGISTRY}
 
-                      sudo docker push ${DOCKER_REGISTRY}/${DOCKER_REPO}:${IMAGE_TAG}
-                      sddo docker push ${DOCKER_REGISTRY}/${DOCKER_REPO}:latest
+                      docker push ${DOCKER_REGISTRY}/${DOCKER_REPO}:${IMAGE_TAG}
+                      docker push ${DOCKER_REGISTRY}/${DOCKER_REPO}:latest
                     '''
                 }
             }
