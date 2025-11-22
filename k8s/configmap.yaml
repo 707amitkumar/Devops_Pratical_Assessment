@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: devops-python-config
+data:
+  APP_ENV: "local"
+  APP_MESSAGE: "Hello from Minikube ConfigMap"
+

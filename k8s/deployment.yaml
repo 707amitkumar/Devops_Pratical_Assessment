@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: devops-python
+  labels:
+    app: devops-python
+spec:
+  replicas: 2
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: devops-python
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 0
+
+  template:
+    metadata:
+      labels:
+        app: devops-python
+    spec:
+      containers:
+      - name: devops-python
+        image: placeholder/image:latest   # Jenkins will replace this with real image
+        imagePullPolicy: IfNotPresent
+        ports:
+          - containerPort: 5000
+
+        env:
+          - name: APP_ENV
+            valueFrom:
+              configMapKeyRef:
+                name: devops-python-config
+                key: APP_ENV
+
+          - name: APP_MESSAGE
+            valueFrom:
+              configMapKeyRef:
+                name: devops-python-config
+                key: APP_MESSAGE
+
+          - name: SECRET_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: devops-python-secret
+                key: api_key
+
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 10
+          timeoutSeconds: 3
+          periodSeconds: 10
+
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 5000
+          initialDelaySeconds: 5
+          timeoutSeconds: 3
+          periodSeconds: 5
+
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+
