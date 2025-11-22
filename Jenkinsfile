@@ -58,7 +58,7 @@ pipeline {
 
                 sh '''
                   # Start container
-                  sudo docker run -d --name test-app -p 5000:5000 ${DOCKER_REGISTRY}/${DOCKER_REPO}:${IMAGE_TAG}
+                  docker run -d --name test-app -p 5000:5000 ${DOCKER_REGISTRY}/${DOCKER_REPO}:${IMAGE_TAG}
 
                   # Wait for the app to come up
                   sleep 3
