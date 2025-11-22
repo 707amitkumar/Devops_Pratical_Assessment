@@ -1,0 +1,8 @@
+region = "ap-south-1"
+env    = "dev"
+
+# Optional:
+tfstate_bucket = "devops-terraform-state-yourname"
+tfstate_prefix = "terraform"
+tf_workspace   = "dev"
+
