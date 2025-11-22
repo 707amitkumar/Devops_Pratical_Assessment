@@ -6,6 +6,7 @@ pipeline {
         DOCKER_REPO     = "amitkumar952/devops-interview-python"
         DOCKER_CRED_ID  = "amitkumar952-dockerhub"
         IMAGE_TAG       = "${env.GIT_COMMIT?.take(7) ?: env.BUILD_ID}"
+        KUBECONFIG      = "/var/lib/jenkins/kube-minikube/config"
     }
 
     options {
@@ -74,6 +75,7 @@ pipeline {
         stage('Docker Login & Push') {
             when { branch 'main' }
             steps {
+                sleep 7
                 echo "Pushing Docker image to registry..."
 
                 withCredentials([usernamePassword(
@@ -90,15 +92,9 @@ pipeline {
                 }
             }
         }
-
-        /* ------------------------------------------------
-           4. DEPLOY TO KUBERNETES
-        -------------------------------------------------- */
-        stage('Deploy to Kubernetes') {
-            when { branch 'main' }
-            steps {
-                echo "Deploying to Kubernetes..."
-
+        stage("kubernetes"){
+            steps{
+                    //sh ''' kubectl get pods'''
                 withCredentials([
                     file(credentialsId: 'KUBECONFIG_CRED', variable: 'KUBECONFIG_FILE'),
                     string(credentialsId: 'APP_API_KEY', variable: 'REAL_API_KEY')
@@ -110,7 +106,7 @@ pipeline {
                       kubectl apply -f k8s/configmap.yaml
                       kubectl apply -f k8s/service.yaml
                       kubectl apply -f k8s/hpa.yaml
-                      kubectl apply -f k8s/pdb.yaml || true
+                      kubectl apply -f k8s/deployment.yaml
 
                       echo "Creating/Updating Kubernetes Secret from Jenkins credential..."
                       kubectl create secret generic devops-python-secret \
@@ -126,26 +122,8 @@ pipeline {
                     '''
                 }
             }
-
-            post {
-                failure {
-                    echo "Deployment failed — attempting rollback..."
-                    script {
-                        withCredentials([file(credentialsId: 'KUBECONFIG_CRED', variable: 'KUBECONFIG_FILE')]) {
-                            sh '''
-                              export KUBECONFIG=${KUBECONFIG_FILE}
-                              kubectl -n default rollout undo deployment/devops-python
-                              kubectl -n default rollout status deployment/devops-python --timeout=60s || true
-                            '''
-                        }
-                    }
-                }
-                success {
-                    echo "✔ Deployment succeeded."
-                }
-            }
         }
-
+        
     }
 
     post {
@@ -160,4 +138,5 @@ pipeline {
         }
     }
 }
+
 
