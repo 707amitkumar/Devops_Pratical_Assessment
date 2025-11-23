@@ -1,0 +1,20 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: devops-python-sm
+  namespace: default          # namespace where Prometheus watches (often "monitoring" or "default")
+  labels:
+    release: prometheus       # optionally match your prometheus release label
+spec:
+  selector:
+    matchLabels:
+      app: devops-python
+  namespaceSelector:
+    matchNames:
+      - default
+  endpoints:
+    - port: metrics           # MUST match the service port name
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+
