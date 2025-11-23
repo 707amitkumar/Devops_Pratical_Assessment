@@ -320,4 +320,21 @@ PromQL: `count(kube_pod_info{pod=~"devops-python-.*"})`
 **Symptom:** Pod shows `ImagePullBackOff`.  
 **Fix:** Validate image name/tag and registry authentication, ensure access to private/public registry is configured, and verify CI inserted the correct image tag into the deployment manifest.
 
+## 🖼️ Dashboard 
+
+![Grafana Dashboard](dashboard_results/grafana.png)
+
+To center the image and control size (GitHub supports HTML):
+
+<p align="center">
+  <img src="dashboard_result/grafana_dashboard.png" alt="Grafana Dashboard" width="700">
+</p>
+
+You can also add a caption:
+
+### 📊 Grafana Dashboard Output
+![Grafana Dashboard](dashboard_result/grafana_dashboard.png)
+
+> This dashboard displays application-level metrics from Prometheus
+
 
