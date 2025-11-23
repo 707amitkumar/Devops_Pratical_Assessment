@@ -4,6 +4,10 @@ metadata:
   name: devops-python-svc
   labels:
     app: devops-python
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: "/metrics"
+    prometheus.io/port: "5000"
 spec:
   selector:
     app: devops-python
